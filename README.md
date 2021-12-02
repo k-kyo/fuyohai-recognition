@@ -11,3 +11,8 @@
 
 ### デモ画像
 ![demo](./media/demo.png)
+
+### 環境
+- python3.8
+- Django
+- OpenCV
