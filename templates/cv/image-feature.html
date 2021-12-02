@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block heads %}
+<script src="{% static 'js/FileSaver.js' %}"></script>
+<script src="{% static 'js/tableexport.js' %}"></script>
+{% endblock %}
+
+{% block title %}hazard estimation{% endblock %}
+
+{% block contents %}
+<h1 class="text-center">mahjong on heroku</h1>
+<div>
+    <p class="text-white bg-primary px-3 py-1 mx-4">一覧</p>
+</div>
+<div class="border mx-4 my-3">
+    <ul class="my-3">
+        <li><a href="{% url 'index' %}">ホーム</a></li>
+    </ul>
+</div>
+<div>
+    <p class="text-white bg-primary px-3 py-1 mx-4">画像ファイル（DBには格納されますが、サーバーには一時的にしか保存されません）</p>
+</div>
+<div class="border mx-4 my-3">
+    <form class="m-3" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">アップロード</button>
+    </form>
+    {% if msg %}
+    <p class="m-3">{{ msg }}</p>
+    {% endif %}
+</div>
+{% if df is not None %}
+<div>
+    <p class="text-white bg-primary px-3 py-1 mx-4">算出結果</p>
+</div>
+<div class="border mx-4 my-3 text-center">
+    <img src="data:image/png;base64,{{ query }}" width="500">
+    <table class="table table-borderless table-sm table-hover my-0 mx-auto" style="width: 0%;">
+        <tbody>
+            {% for _, rows in df.iterrows %}
+            <tr>
+                {% for row in rows %}
+                    {% if row is not None %}
+                    <td><img src="{{ row }}", width="50"></td>
+                    {% else %}
+                    <td></td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <canvas id="myPieChart"></canvas>
+    <canvas id="myRaderChart"></canvas>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+<script>
+    var dataLabelPlugin = {
+        afterDatasetsDraw: function (chart, easing) {
+            // To only draw at the end of animation, check for easing === 1
+            var ctx = chart.ctx;
+
+            chart.data.datasets.forEach(function (dataset, i) {
+                var dataSum = 0;
+                dataset.data.forEach(function (element){
+                    dataSum += element;
+                });
+
+                var meta = chart.getDatasetMeta(i);
+                if (!meta.hidden) {
+                    meta.data.forEach(function (element, index) {
+                        // Draw the text in black, with the specified font
+                        ctx.fillStyle = 'rgb(255, 255, 255)';
+
+                        var fontSize = 12;
+                        var fontStyle = 'normal';
+                        var fontFamily = 'Helvetica Neue';
+                        ctx.font = Chart.helpers.fontString(fontSize, fontStyle, fontFamily);
+
+                        // Just naively convert to string for now
+                        var labelString = chart.data.labels[index];
+                        var dataString = (Math.round(dataset.data[index] / dataSum * 1000)/10).toString() + '%';
+
+                        // Make sure alignment settings are correct
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        var padding = 5;
+                        var position = element.tooltipPosition();
+                        ctx.fillText(labelString, position.x, position.y - (fontSize / 2) - padding);
+                        ctx.fillText(dataString, position.x, position.y + (fontSize / 2) - padding);
+                    });
+                }
+            });
+        }
+    };
+
+    var ctx = document.getElementById("myPieChart");
+    var myPieChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ["聴牌", "1向聴", "2向聴", "3向聴以上"],
+        datasets: [{
+            backgroundColor: [
+                "#000080",
+                "#0000FF",
+                "#008000",
+                "#008080",
+                "#00FF00",
+            ],
+            data: [{{ dic.0 }}, {{ dic.1 }}, {{ dic.2 }}, {{ dic.3 }}]
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: '向聴数 割合'
+        }
+      },
+      plugins: [dataLabelPlugin],
+    });
+
+    var ctx = document.getElementById("myRaderChart");
+    var myRadarChart = new Chart(ctx, {
+        type: 'radar', 
+        data: { 
+            labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            datasets: [{
+                label: '萬子',
+                data: [{{ suit_dic.1m }}, {{ suit_dic.2m }}, {{ suit_dic.3m }},
+                       {{ suit_dic.4m }}, {{ suit_dic.5m }}, {{ suit_dic.6m }},
+                       {{ suit_dic.7m }}, {{ suit_dic.8m }}, {{ suit_dic.9m }},],
+                backgroundColor: 'RGBA(255,0,0, 0.5)',
+                borderColor: 'RGBA(0,0,0, 1)',
+                borderWidth: 1,
+                pointBackgroundColor: 'RGB(46,106,177)'
+            }, {
+                label: '筒子',
+                data: [{{ suit_dic.1p }}, {{ suit_dic.2p }}, {{ suit_dic.3p }},
+                       {{ suit_dic.4p }}, {{ suit_dic.5p }}, {{ suit_dic.6p }},
+                       {{ suit_dic.7p }}, {{ suit_dic.8p }}, {{ suit_dic.9p }},],
+                backgroundColor: 'RGBA(0,0,0, 0.5)',
+                borderColor: 'RGBA(0,0,0, 1)',
+                borderWidth: 1,
+                pointBackgroundColor: 'RGB(46,106,177)'
+            }, {
+                label: '索子',
+                data: [{{ suit_dic.1s }}, {{ suit_dic.2s }}, {{ suit_dic.3s }},
+                       {{ suit_dic.4s }}, {{ suit_dic.5s }}, {{ suit_dic.6s }},
+                       {{ suit_dic.7s }}, {{ suit_dic.8s }}, {{ suit_dic.9s }},],
+                backgroundColor: 'RGBA(0,255,0, 0.5)',
+                borderColor: 'RGBA(0,255,0, 1)',
+                borderWidth: 1,
+                pointBackgroundColor: 'RGB(46,106,177)'
+            },]
+        },
+        options: {
+            title: {
+                display: true,
+                text: '聴牌している場合の放銃 割合'
+            },
+            scale:{
+                ticks:{
+                    suggestedMin: 0,
+                    suggestedMax: 7,
+                    stepSize: 1,
+                    callback: function(value, index, values){
+                        return  value +  '%'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

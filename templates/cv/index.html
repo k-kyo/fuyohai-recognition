@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block contents %}
+<h1 class="text-center">mahjong on heroku</h1>
+<div>
+    <p class="text-white bg-primary px-3 py-1 mx-4">概要</p>
+</div>
+<div class="border mx-4 my-3">
+    <ul class="my-3">
+        <li>麻雀において様々な支援をするwebアプリケーションです</li>
+    </ul>
+</div>
+<div>
+    <p class="text-white bg-primary px-3 py-1 mx-4">一覧</p>
+</div>
+<div class="border mx-4 my-3">
+    <ul class="my-3">
+        <li><a href="{% url 'hazard' %}">危険度推定</a></li>
+    </ul>
+</div>
+{% endblock %}
